@@ -32,12 +32,12 @@ def decode(mask):
 # Create your views here.
 
 @api_view(["POST"])
-def infer(request):
+def infer_mask(request):
     if request.method == "POST":
         image = request.FILES['file']
 
-        images = np.zeros((1, 1024,1024, 3))
-
+        images = np.zeros((1, 1024,1024, 3), dtype=np.float32)
+        interpreter.allocate_tensors()
         with Image.open(image) as img:
             im = img.convert("RGB")
             im = im.resize((1024, 1024))
@@ -74,13 +74,49 @@ def infer(request):
         plt.savefig(filename, bbox_inches='tight')
         plt.close()
         try:
-        with open(filename, "rb") as f:
-            return HttpResponse(f.read(), content_type="image/jpeg")
+            with open(filename, "rb") as f:
+                return HttpResponse(f.read(), content_type="image/jpeg")
         except IOError:
             red = Image.new('RGBA', (1, 1), (255,0,0,0))
             response = HttpResponse(content_type="image/jpeg")
             red.save(response, "JPEG")
             return response
+
+@api_view
+def infer_class(request):
+    if request.method == "POST":
+        image = request.FILES['file']
+
+        images = np.zeros((1, 1024,1024, 3), dtype=np.float32)
+
+        interpreter.allocate_tensors()
+
+        with Image.open(image) as img:
+            im = img.convert("RGB")
+            im = im.resize((1024, 1024))
+        
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+
+        interpreter.set_tensor(input_details[0]['index'], images)
+
+        interpreter.invoke()
+
+        cls_logit = interpreter.get_tensor(output_details[0]['index'])
+        seg_logit = interpreter.get_tensor(output_details[1]['index'])
+
+        pred_label = np.array(cls_logit[0, :])
+        value = np.argmax(pred_label)
+
+        # seg_result
+        seg_pred_classes = np.expand_dims(np.argmax(seg_logit, axis=3), axis=3)
+        
+        result_name = list(label_class.keys())[list(label_class.values()).index(value)]
+        filename = "{}.jpg".format(result_name)
+        result = {}
+        result["result"] = result_name
+        
+        return Response(result, status=status.HTTP_200_OK)
         
 
 
