@@ -58,17 +58,19 @@ def infer(request):
         # seg_result
         seg_pred_classes = np.expand_dims(np.argmax(seg_logit, axis=3), axis=3)
         decode_mask = decode(seg_pred_classes)
+        result_name = list(label_class.keys())[list(label_class.values()).index(value)]
+        filename = "{}.jpg".format(result_name)
         pred_mask = Image.fromarray(decode_mask)
         pred_mask = pred_mask.resize((img.size[0], img.size[1]))
         plt.rcParams['savefig.dpi'] = 300
+        plt.title(result_name)
         plt.subplot(121)
         plt.axis('off')
         plt.imshow(img)
         plt.subplot(122)
         plt.axis('off')
         plt.imshow(pred_mask)
-        result_name = list(label_class.keys())[list(label_class.values()).index(value)]
-        filename = "{}.jpg".format(result_name)
+       
         plt.savefig(filename, bbox_inches='tight')
         plt.close()
         try:
