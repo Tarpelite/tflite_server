@@ -15,11 +15,14 @@ import matplotlib as mpl
 
 mpl.use('Agg')
 from matplotlib import pyplot as plt
+from .models import Score
 
-abel_colours = [(128, 0, 0), (0, 128, 0), (0, 0, 128), (0, 0, 0)]
+label_colours = [(128, 0, 0), (0, 128, 0), (0, 0, 128), (0, 0, 0)]
 label_class = {'wire_opening': 0, 'nest': 1, 'grass': 2}
 
 interpreter = tf.lite.Interpreter(model_path='model.tflite')
+
+tmp_image_path = "/var/www/tmp.jpg"
 
 def decode(mask):
     img = Image.new('RGB', (128, 128))
@@ -30,6 +33,72 @@ def decode(mask):
     outputs = np.array(img)
     return outputs
 # Create your views here.
+
+@api_view(["GET", "POST"])
+def hangle_image(request):
+    if request.method == "GET":
+        try:
+            with open(tmp_image_path, "rb") as f:
+                return HttpResponse(f.read(), content_type="image/jpeg")
+        except IOError:
+            red = Image.new('RGBA', (1, 1), (255,0,0,0))
+            response = HttpResponse(content_type="image/jpeg")
+            red.save(response, "JPEG")
+            return response
+
+    if request.method == "POST":
+        image = request.FILES['file']
+        with open("rb", image) as f_in:
+            data = f_in.read()
+        with open(tmp_image_path,"w+") as f:
+            f.write(data)
+        return Response({"result":"ok"}, status=status.HTTP_200_OK)
+
+@api_view(["POST", "GET"])
+def score(request):
+    if request.method == "POST":
+        local_state = {}
+        local_state["wire_opening"] = request["wire_opening"]
+        local_state["nest"] = request["nest"]
+        local_state["grass"] = request["grass"]
+        result = max(local_state)
+        scores = Score.objects.all()
+        if len(scores) == 0:
+            score = Score(score1=str(local_state["wire_opening"]), score2=str(local_state["nest"]), score3=str(local_state["grass"]), result=result)
+            score.save()
+        else:
+            score = scores[0]
+            score.score1 = str(local_state["wire_opening"])
+            score.score2 = str(local_state["nest"])
+            score.score3 = str(local_state["grass"])
+            score.result = result
+            score.save()
+        return Response({"result":"successfully update"}, status=status.HTTP_200_OK)
+
+    if request.method == "GET":
+        score = Score.objects.all()
+        score = score[0]
+        local_state = {}
+        local_state["wire_opening"] = score.score1
+        local_state["nest"] = score.score2
+        local_state["grass"] = score.score3
+        local_state["result"] = score.result
+        return Response(local_state, status=status.HTTP_200_OK)
+
+            
+
+
+@api_view(["POST"])
+def post_image(request):
+    if request.method == "POST":
+        image = request.FILES['file']
+        with open("rb", image) as f_in:
+            data = f_in.read()
+        with open("w+", tmp_image_path) as f:
+            f.write(data)
+        
+        return Response({"result":"ok"}, status=status.HTTP_200_OK)
+
 
 @api_view(["POST"])
 def infer_mask(request):
@@ -82,7 +151,7 @@ def infer_mask(request):
             red.save(response, "JPEG")
             return response
 
-@api_view
+@api_view(["POST"])
 def infer_class(request):
     if request.method == "POST":
         image = request.FILES['file']
