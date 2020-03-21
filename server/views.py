@@ -20,7 +20,7 @@ from .models import Score
 label_colours = [(128, 0, 0), (0, 128, 0), (0, 0, 128), (0, 0, 0)]
 label_class = {'wire_opening': 0, 'nest': 1, 'grass': 2}
 
-interpreter = tf.lite.Interpreter(model_path='model.tflite')
+interpreter = tf.lite.Interpreter(model_path='/root/seg_model/model.tflite')
 
 tmp_image_path = "/var/www/tmp.jpg"
 
@@ -48,7 +48,7 @@ def handle_image(request):
 
     if request.method == "POST":
         image = request.FILES['file']
-        with open("rb", image) as f_in:
+        with open(image, "rb") as f_in:
             data = f_in.read()
         with open(tmp_image_path,"w+") as f:
             f.write(data)
