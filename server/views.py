@@ -35,7 +35,7 @@ def decode(mask):
 # Create your views here.
 
 @api_view(["GET", "POST"])
-def hangle_image(request):
+def handle_image(request):
     if request.method == "GET":
         try:
             with open(tmp_image_path, "rb") as f:
@@ -86,7 +86,6 @@ def score(request):
         return Response(local_state, status=status.HTTP_200_OK)
 
             
-
 
 @api_view(["POST"])
 def post_image(request):
