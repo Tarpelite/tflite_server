@@ -1,0 +1,2 @@
+rootProject.name='tflite_server'
+include ':app'
